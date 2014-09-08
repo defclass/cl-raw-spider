@@ -1,0 +1,21 @@
+(defun show-google-hits (term)
+  (let* ((query (list (cons "q" term)))
+         (str (drakma:http-request "http://www.google.com/search"
+                                   :parameters query))
+         (document (chtml:parse str (cxml-stp:make-builder))))
+    (stp:do-recursively (a document)
+      (when (and (typep a 'stp:element)
+                 (equal (stp:local-name a) "a")
+                 (equal (stp:parent a) "h3"))
+        (format t "~A:~%  " (stp:string-value a))))))
+
+(defun test-cxml ()
+  (let* ((str (drakma:http-request "http://www.baidu.com/"))
+         (document (chtml:parse str (cxml-stp:make-builder))))
+    (stp:do-recursively (a document)
+      
+      (when (and (typep a 'stp:element)
+                 (equal (stp:local-name a) "a")
+                 (equal (stp:attribute-value a "class") "mnav")
+                 (equal (stp:attribute-value a "name") "tj_trnews"))
+      (format t (stp:attribute-value a "href"))))))
