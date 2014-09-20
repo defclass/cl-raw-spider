@@ -95,7 +95,7 @@
                           (when (and (typep d 'stp:text)
                                      (< 4 (length (string-trim '(#\Space #\Tab #\Return #\Newline) (stp:data d)))))
                             (push (stp:data d) result)))
-                        (push result td))
+                        (push (list result) td))
                       (stp:do-recursively (d c)
                         (when (and (typep d 'stp:text)
                                    (< 4 (length (string-trim '(#\Space #\Tab #\Return #\Newline) (stp:data d)))))
@@ -103,3 +103,23 @@
           (setf collect (pairlis th td collect)))))
     collect))
               
+
+(defun seek-email-in-str (str)
+  (cl-ppcre:all-matches-as-strings "\\w+@[a-zA-Z0-9-_]+\\.\\w+" str))
+
+(defun assemble-google-url (list)
+  (let* ((base-url "https://www.google.com.hk/search?hl=en&q=")
+         (raw-site-url (cdr (assoc "Website:" list :test 'string=)))
+         (site-url (labels ((remove-http (url)
+                              " remove http:// prefix "
+                              (string-trim "http://" url)))
+                     (if (and raw-site-url
+                            (typep raw-site-url 'list)
+                            (< 0 (length raw-site-url)))
+                       (reduce #'(lambda (x y) (CONCATENATE 'string (remove-http x) "+" (remove-http y))) raw-site-url)
+                       (remove-http raw-site-url)))))
+    (cond (site-url (concatenate 'string base-url  site-url  "+email"))
+          (t nil))))
+
+
+

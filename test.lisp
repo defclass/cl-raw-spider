@@ -59,3 +59,12 @@
        else
        collecting i into evens
        finally (return (list evens odds)))))
+
+(defun test-ppcre ()
+  (let* ((var "lsdkfdl sbcdsd23@sld.comd lsldlfkkl"))
+    (cl-ppcre:all-matches-as-strings "\w" var)))
+
+(defun test-tagbody()
+  (labels ((abc (x)
+               (+ x 5)))
+     (abc 4)))
