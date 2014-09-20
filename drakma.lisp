@@ -38,7 +38,7 @@
 
 (defparameter test-url "http://herbold.trustpass.alibaba.com/contactinfo.html")
 
-(defun parse-contact-info ()
+(defun parse-contact-info (str)
   " Get alibaba contact info . Include
     Telephone:
     Fax,
@@ -49,9 +49,7 @@
 	Operational Address: 	
 	Website:
 	Website on alibaba.com.Return a alist "
-  
-  (let* ((str (snowh4r3-common::read-file-to-str "~/Desktop/lisp.html"))
-         (document (chtml:parse str (cxml-stp:make-builder)))
+  (let* ((document (chtml:parse str (cxml-stp:make-builder)))
          (collect ()))
     (stp:do-recursively (a document)
       (when (and (typep a 'stp:element)
