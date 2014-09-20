@@ -121,5 +121,12 @@
     (cond (site-url (concatenate 'string base-url  site-url  "+email"))
           (t nil))))
 
-
-
+(defun get-gg-index-url (str)
+  " 获取 google 搜索页面的 url地址 "
+  (let* ((document (chtml:parse str (cxml-stp:make-builder)))
+         (links (stp:filter-recursively #'(lambda (y)
+                                            (and (typep y 'stp:element)
+                                                 (equal (stp:local-name y ) "h3")
+                                                 (equal (stp:attribute-value y "class" ) "r"))) document)))
+         (map 'list  #'(lambda (x)
+                         (string-trim "/url?q=" (stp:attribute-value (stp:first-child x) "href"))) links)))
