@@ -66,5 +66,8 @@
 
 (defun test-tagbody()
   (labels ((abc (x)
-               (+ x 5)))
-     (abc 4)))
+             (+ x 5)))
+    (abc 1)))
+
+(defun test-condition ()
+  (format t "~A" (test-tagbody)))

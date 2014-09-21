@@ -1,9 +1,19 @@
 ;;;(asdf-install:install "./libs/cl-curl.tgz")
 (cl:in-package :snowh4r3-spider)
-
-(defparameter origin-url '(("prefix" . "http://www.alibaba.com/products/F0/plastic_recycle/----------------------50----------------------------EU")
+(cl:load "/home/hq/lisp/drakma-spider/user_agents.lisp")
+(defparameter origin-url '(("prefix" . "http://www.alibaba.com/products/F0/plastic_recycle/----------------------50----------------------------SEA")
                            ("suffix" . ".html")))
-(defparameter total-index-page 2)
+(defparameter total-index-page 205)
+(defvar output-file "~/Desktop/out-put-file.cvs")
+
+
+(defvar recoder-hash (make-hash-table))
+
+(defun do-crawl ()
+  " main function"
+  (let* ((alibaba-index (get-index-urls)))
+    (format t "~A" alibaba-index)))
+
 
 (defun get-index-urls ()
   " Get alibaba index page url"
@@ -14,14 +24,19 @@
        collect
          (cond
            ((= 0 i) (concatenate 'string pre-url suffix-url))
-           (t (concatenate 'string  pre-url (write-to-string i) suffix-url))))))
+           (t (concatenate 'string  pre-url "/" (write-to-string i)  suffix-url))))))
 
 
 (defun get-content (url &key (encode :utf8))
   " Get the webpage content"
-  (progn
-    (snowh4r3-common::write-log (concatenate 'string "正在获取网址:" url))
-    (snowh4r3-common::write-log (drakma:http-request url :external-format-in encode) :stdout nil)))
+  (let* ((user-agent (elt user-agents (random (length user-agents)))))
+    (progn
+      (snowh4r3-common::write-log (concatenate 'string "正在获取网址:" url ))
+      (when (search "google" url :test #'equal)
+        (progn
+          (snowh4r3-common::write-log (concatenate 'string "google网址休息一下"))
+          (sleep (+ 30 (random 50)))))
+      (snowh4r3-common::write-log (drakma:http-request url :external-format-in encode :user-agent user-agent ) :stdout nil))))
 
 (defun parse-contact-url (str)
   " get alibaba contact info pages .Return urls"
@@ -175,5 +190,14 @@
                              (cons x (cdr (assoc x a-recorder :test #'equal)))
                              (cons x "N/A"))) index)))
 
-(defun write-data-to-file (data path)
-  )
+(defun write-data-to-file (hash-table)
+  (with-open-file (s output-file :direction :output :if-does-not-exist :create :if-exists :append)
+    (maphash #'(lambda (key value)
+                 (let* ((line (if (typep value 'list)
+                                  (reduce #'(lambda(x y)
+                                              (concatenate 'string (cdr x) ">>>" (cdr y))) value)
+                                  nil)))
+                   (progn
+                     (snowh4r3-common::write-log (concatenate 'string "正在写入记录：" key "\n") :stdout nil)
+                     (format s "~A~%" line))))
+                 hash-table)))
