@@ -36,8 +36,6 @@
               (setf collect (append (list url) collect))))))
               collect))
 
-(defparameter test-url "http://herbold.trustpass.alibaba.com/contactinfo.html")
-
 (defun parse-contact-info (str)
   " Get alibaba contact info . Include
     Telephone:
@@ -130,3 +128,52 @@
                                                  (equal (stp:attribute-value y "class" ) "r"))) document)))
          (map 'list  #'(lambda (x)
                          (string-trim "/url?q=" (stp:attribute-value (stp:first-child x) "href"))) links)))
+
+(defun score-and-sort-emails(url emails)
+  " url 可能是list ,email一定是list ,对email进行打分后排序，取前面两个email"
+  (flet ((get-domain (url)
+           (if (typep url 'list)
+               (map 'list #'(lambda(x)
+                              (string-trim "www." (string-trim "http://" x))) url)
+               (string-trim "www." (string-trim "http://" url)))))
+    (let* ((domain (get-domain url))
+           scored-email sort-email)
+      (flet ((get-score (email)
+               (let* ((splited-email (cl-ppcre:split "@" email))
+                      (email-prefix (list "info" "webmaster" "trade" "sales"))
+                      (score 0))
+                 (progn
+                   (when (find (car splited-email) email-prefix :test #'equalp)
+                     (setf score (+ 1 score)))
+                   (when (or (and (typep domain 'list)
+                                  (find (cadr splited-email) domain :test #'equalp))
+                             (typep domain 'string))
+                     (setf score (+ 10 score))))
+                 score)))
+        (progn
+          (setf scored-email (map 'list #'(lambda(email)
+                                            (cons email (get-score email))) emails))
+          (setf sort-email (sort scored-email #'(lambda (x y)
+                                                    (> (cdr x)
+                                                       (cdr y)))))
+          (subseq (map 'list #'(lambda (email)
+                                 (car email)) sort-email) 0  2))))))
+
+(defun trunc-a-recorder (a-recorder)
+  (let* ((index '("Telephone:"
+                 "Fax:"
+                 "Address:"
+                 "Zip:"
+                 "Country/Region:"
+                 "City:"
+                 "Company Name:"
+                 "Operational Address:"
+                 "Website:"
+                 "Website on alibaba.com:")))
+         (map 'list  #'(lambda (x)
+                         (if (assoc x a-recorder  :test #'equal)
+                             (cons x (cdr (assoc x a-recorder :test #'equal)))
+                             (cons x "N/A"))) index)))
+
+(defun write-data-to-file (data path)
+  )
