@@ -11,20 +11,17 @@
                  (equal (stp:attribute-value a "name") "tj_trnews"))
       (format t (stp:attribute-value a "href"))))))
 
-(defun  test-curl ()
-  (curl:with-connection-returning-string (:cookies t)
-    (curl:set-option :url "http://www.sina.com.cn")
-    (curl:perform)))
 
 
 (defun test-bable ()
-  (let* ((r (drakma:http-request "http://www.sina.com.cn/" :force-binary t))
-         (str (babel:octets-to-string r :encoding :gbk)))
-    (write-log str)))
+  (let* ((r (drakma:http-request "http://www.sina.com.cn/" :force-binary t)))
+         (babel:octets-to-string r :encoding :GB2312)))
+
+
 
 
 (defun test-drakma ()
-  (drakma:http-request "http://www.sina.com.cn" :external-format-in :gbk))
+      (drakma:http-request "http://www.sina.com.cn") )
 
 ;;;(defparameter conn (cl-pop::open-pop-connection :host "pop.qq.com" :username "snowh4r3@qq.com" :password "~hQ19880607")
 (defun test-socket ()
@@ -71,3 +68,32 @@
 
 (defun test-condition ()
   (format t "~A" (test-tagbody)))
+
+(defmacro test-macro ()
+  (PROGN
+   `(format t "~A" '((+ 5 6)  b))
+   (format t "~A" '((+ 5 7) b))))
+
+
+(defun test-teturn-nil(x)
+  (when (not x )
+    (format t "abc")))
+
+
+(defun test-shell()
+  (sb-ext:run-program "/usr/bin/sh" (list "-c" "curl --silent --write-out %{http_code}  http://www.sina.com.cn") ))
+
+(define-condition test-condetion ()
+  ((code :initarg :text :reader read-code)))
+
+(defun test-sb-ext (&key (code :utf8) )
+  (let* ((r (drakma:http-request "http://www.sina.com.cn" :force-binary t)))
+    (sb-ext:octets-to-string r :EXTERNAL-FORMAT code )))
+
+
+(defun  do-request ()
+  (handler-case (test-sb-ext)
+    (SB-IMPL::INVALID-UTF8-CONTINUATION-BYTE () nil)))
+      
+(defun hello-world()
+  (format t "Hello world"))

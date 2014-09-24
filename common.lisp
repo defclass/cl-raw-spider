@@ -15,3 +15,6 @@
            (write-string line out)
            (unless nl
              (write-char #\Newline out)))))))
+
+(defun plist-value (key plist)
+  (cdr (assoc key plist :test  #'string=)))

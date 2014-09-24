@@ -7,7 +7,6 @@
     :depends-on ("drakma"
                  "st-json"
                  "uffi"
-                 "curl"
                  "cl-smtp"
                  "cl-pop"
                  "babel"
@@ -16,8 +15,10 @@
                  "babel"
                  "cxml-stp"
                  "split-sequence"
+                 "trivial-dump-core"
                  )
     :components ((:file "package")
+                 (:file "user_agents" :depends-on ("package"))
                  (:file "common" :depends-on ("package"))
                  (:file "test" :depends-on ("package"))
                  (:file "drakma" :depends-on ("package" "common"))
