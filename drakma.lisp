@@ -11,9 +11,6 @@
 (defvar *contacts-and-emails* nil)
 (defvar *recorder-hash* (make-hash-table))
 
-
-
-
 (defun do-crawl ()
   " main function"
   )
@@ -50,6 +47,16 @@
 ;;           nil))))
 
 
+(defun get-emails()
+  (let* ((list *contacts-and-gg-index-url*))
+    (setf *contacts-and-emails* (loop for i in list with email
+                                   when  (let* ((gg-urls (snowh4r3-common::plist-value "gg-index-urls" i)))
+                                           (setf  email (do-get-and-parse gg-urls #'seek-email-in-str append)))
+                                   collect (acons "email"  email i)))))
+
+           
+  
+
 (defmacro get-next-value ((save-var save-keyname) (base-var base-keyname)  handle-func)
   (let*  ((var (gensym)))
   `(setf ,save-var
@@ -73,17 +80,19 @@ http://www.gooogle.com.hk/?q=xxx"  nil)
   nil)
 
 
-(get-next-value (*contacts-and-gg-url* "gg-url")
-                (*all-contacts-info* "Website:")
-                #'assemble-google-url)
 
-(get-next-value (*contacts-and-gg-content* "gg-content")
-                (*contacts-and-gg-url* "gg-url")
-                #'get-content)
+(defun get-gg-index-url()
+  (get-next-value (*contacts-and-gg-url* "gg-url")
+                  (*all-contacts-info* "Website:")
+                  #'assemble-google-url)
 
-(get-next-value (*contacts-and-gg-index-url* "gg-index-urls")
-                (*contacts-and-gg-content* "gg-content")
-                #'parse-gg-index-url)
+  (get-next-value (*contacts-and-gg-content* "gg-content")
+                  (*contacts-and-gg-url* "gg-url")
+                  #'get-content)
+
+  (get-next-value (*contacts-and-gg-index-url* "gg-index-urls")
+                  (*contacts-and-gg-content* "gg-content")
+                  #'parse-gg-index-url))
 
 
 (defun get-ali-contact-info ()
@@ -142,7 +151,10 @@ http://www.gooogle.com.hk/?q=xxx"  nil)
                 (progn
                   (format t "url超时错误%")
                   nil))
-
+              (DRAKMA::DRAKMA-SIMPLE-ERROR ()
+                (format t "网络错误"))
+              (error ()
+                (format t "未知错误"))
               )))
         nil))
 
