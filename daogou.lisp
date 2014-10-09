@@ -41,12 +41,12 @@
              (= 1 (st-json:getjso "status" struct-data)))
         (let ((data (st-json:getjso "data" struct-data)))
           (loop for i in data
-             collect (make-instance 'guangdiu :headline (st-json:getjso "title" struct-data)
-                                                    :mall-raw-url (st-json:getjso "mallRawUrl" struct-data)
-                                                    :source (st-json:getjso "source" struct-data)
-                                                    :content-url (st-json:getjso "contentUrl" struct-data)
-                                                    :belong-to (st-json:getjso "belongTo" struct-data)
-                                                    :min-image (st-json:getjso "minImg" struct-data))))
+             collect (make-instance 'guangdiu :headline (st-json:getjso "title" i)
+                                                    :mall-raw-url (st-json:getjso "mallRawUrl" i)
+                                                    :source (st-json:getjso "source" i)
+                                                    :content-url (st-json:getjso "contentUrl" i)
+                                                    :belong-to (st-json:getjso "belongTo" i)
+                                                    :min-image (st-json:getjso "minImg" i))))
         nil)))
          
 
