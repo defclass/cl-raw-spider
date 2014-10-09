@@ -41,12 +41,7 @@
              (= 1 (st-json:getjso "status" struct-data)))
         (let ((data (st-json:getjso "data" struct-data)))
           (loop for i in data
-             collect (make-instance 'guangdiu :headline (st-json:getjso "title" i)
-                                                    :mall-raw-url (st-json:getjso "mallRawUrl" i)
-                                                    :source (st-json:getjso "source" i)
-                                                    :content-url (st-json:getjso "contentUrl" i)
-                                                    :belong-to (st-json:getjso "belongTo" i)
-                                                    :min-image (st-json:getjso "minImg" i))))
+             collect (gdindex-to-obj i)))
         nil)))
          
 
@@ -80,15 +75,13 @@
   (let* ((node-path (config:c "node-bin-path"))
          (cmd (concatenate 'string node-path " " script-path " " html-path)))
     (common::sh cmd)))
-    
-    
-            
 
-              
-            
-              
-                                  
-                                  
-                                  
-          
-                   
+(defun gdindex-to-obj (jso)
+  " guangdiu.com jso对象 转化为obj"
+  (when (typep jso 'st-json:jso)
+    (make-instance 'guangdiu :headline (st-json:getjso "title" jso)
+                   :mall-raw-url (st-json:getjso "mallRawUrl" jso)
+                   :source (st-json:getjso "source" jso)
+                   :content-url (st-json:getjso "contentUrl" jso)
+                   :belong-to (st-json:getjso "belongTo" jso)
+                   :min-image (st-json:getjso "minImg" jso))))
