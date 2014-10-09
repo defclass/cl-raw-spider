@@ -30,13 +30,25 @@
   ((guangdiu :initform () :accessor guangdiu)
    (goods :initarg () :accessor goods)))
 
-   
+
+(defmethod gdobj-to-goodobj((gdobj guangdiu) (goods goods))
+  " 通过gdobj提供的数据去生成goods的obj"
+  (macrolet ((copy-slot (list target-obj source-obj)
+               `(progn
+                  ,@(loop for i in list
+                       collect `(setf (,i ,target-obj) (,i ,source-obj))))))
+    ;;; mall-url create-time content category participle click-total
+    (progn
+      (copy-slot (source min-image headline belong-to)  goods gdobj)
+      (setf (good-id goods) (get-universal-time)))))
+
+    
 ;;;;主函数
 
 (defun collect-gdindex-obj (url)
   (let* ((json (parse-guangdiu-index url))
          (struct-data (when (eq :true (st-json:as-json-bool json))
-                        (st-json:read-json json 'list))))
+                        (st-json:read-json json))))
     (if (and (typep struct-data 'st-json:jso)
              (= 1 (st-json:getjso "status" struct-data)))
         (let ((data (st-json:getjso "data" struct-data)))
@@ -55,7 +67,7 @@
     json))
 
 ;;;; 辅助函数
-(defun get-content (url &key (encode :utf8)
+(defun get-content (url &key (encode :utf8))
   (let* ((user-agent (elt common:user-agents (random (length common:user-agents)))))
     (drakma:http-request url :external-format-in encode :user-agent user-agent)))
 
