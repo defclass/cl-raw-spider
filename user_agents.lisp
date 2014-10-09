@@ -1,4 +1,4 @@
-(cl:in-package :snowh4r3-spider)
+(cl:in-package :common)
 (defvar user-agents '("larbin_2.6.3 gqnmgsp@ruc.edu.cn"
 "noxtrumbot/1.0 (crawler@noxtrum.com)"
 "NutchCVS/0.8-dev (Nutch; http://lucene.apache.org/nutch/bot.html; nutch-agent@lucene.apache.org)"

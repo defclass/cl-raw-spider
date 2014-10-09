@@ -1,5 +1,5 @@
 ;;;; -*- Mode: Lisp; Syntax: ANSI-Common-Lisp; Base: 10 -*-
-(asdf:defsystem :drakma-spider
+(asdf:defsystem :daogou
     :description "a simple wrapper of dramka"
     :version "0.1"
     :author "snowh4r3 O <snowh4r3@gmail.com>"
@@ -20,8 +20,8 @@
     :components ((:file "package")
                  (:file "user_agents" :depends-on ("package"))
                  (:file "common" :depends-on ("package"))
+                 (:file "config" :depends-on ("package" "common"))
                  (:file "test" :depends-on ("package"))
-                 (:file "drakma" :depends-on ("package" "common"))
-                 (:file "email" :depends-on ("package"))
+                 (:file "daogou" :depends-on ("package" "common"))
                  ))
 

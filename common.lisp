@@ -1,4 +1,4 @@
-(cl:in-package :snowh4r3-common)
+(cl:in-package :common)
 (defun write-log (str &key (stdout t)  )
   (with-open-file (s "~/Desktop/lisp.log" :direction :output :if-exists :append :if-does-not-exist :create)
     (when stdout
@@ -18,3 +18,18 @@
 
 (defun plist-value (key plist)
   (cdr (assoc key plist :test  #'string=)))
+
+
+(defun sh (cmd)
+    #+clisp
+        (let ((str (ext:run-shell-command cmd :output:stream)))
+            (loop for line = (read-line str nil)
+             until (null line)
+             do (print line)))
+    #+ecl
+        (si:system cmd)
+    #+sbcl
+    (with-output-to-string (stream )
+      (sb-ext:run-program "/bin/sh" (list "-c" cmd) :input nil :output stream))
+    #+clozure
+        (ccl:run-program "/bin/sh" (list "-c" cmd) :input nil :output *standard-output*))

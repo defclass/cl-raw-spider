@@ -1,4 +1,4 @@
-(defpackage :snowh4r3-common
+(defpackage :common
   (:use
    :cl
    :cl-ppcre
@@ -11,12 +11,21 @@
    plist-value
    write-log
    read-file-to-str
+   ;;;;;;;;;;;;;;;;;;;;
+   ;;;; variable
+   ;;;;;;;;;;;;;;;;;;;;
+   user-agents
    ))
 
-(defpackage :snowh4r3-spider
+
+(defpackage :config
+  (:use :cl :common)
+  (:export c))
+
+(defpackage :daogou
   (:use
    :cl
-   :snowh4r3-common
+   :common
    :cl-ppcre
    :cl-smtp
    :cl-pop
@@ -27,16 +36,12 @@
    *contacts-and-emails*  
    *recorder-hash*))
 
-(defpackage :snowh4r3-test
+
+
+(defpackage :test
   (:use :cl
         :cl-ppcre
-        :snowh4r3-common
+        :common
         :cl-smtp
         :cl-pop))
 
-(defpackage :snowh4r3-email
-  (:use :cl
-        :cl-ppcre
-        :snowh4r3-common
-        :cl-smtp
-        :cl-pop))

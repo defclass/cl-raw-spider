@@ -1,4 +1,4 @@
-(cl:in-package :snowh4r3-test)
+(cl:in-package :test)
 
 (defun test-cxml ()
   (let* ((str (drakma:http-request "http://www.baidu.com/"))
@@ -20,8 +20,8 @@
 
 
 
-(defun test-drakma ()
-      (drakma:http-request "http://www.sina.com.cn") )
+(defun test-drakma (url)
+      (drakma:http-request url :external-format-in ) )
 
 ;;;(defparameter conn (cl-pop::open-pop-connection :host "pop.qq.com" :username "snowh4r3@qq.com" :password "~hQ19880607")
 (defun test-socket ()
