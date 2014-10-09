@@ -97,3 +97,8 @@
       
 (defun hello-world()
   (format t "Hello world"))
+
+
+(defclass test ()
+  ((name :initarg :name :accessor name)
+   (age :initarg :age :accessor age)))
