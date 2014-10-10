@@ -41,7 +41,12 @@
     (let* ((goods (make-instance 'goods)))
       (progn
         (copy-slot (source min-image headline belong-to)  goods gdobj)
-        (setf (good-id goods) (get-universal-time))))))
+        (setf (good-id goods) (get-universal-time))
+        (setf (mall-url goods) (get-real-mall-url (mall-raw-url gdobj)))
+        (setf (create-time goods) (- (get-universal-time) (encode-universal-time 0 0 0 01 01 1970)))
+        ;; (setf (content goods) 
+        )
+      goods)))
 
     
 ;;;;主函数
@@ -58,6 +63,9 @@
         nil)))
          
 
+
+;;;; 助手函数
+
                
 (defun parse-guangdiu-index (url)
   (let* ((script-path (concatenate 'string (config:c "js-path") "parse.guangdiu.index.js"))
@@ -67,7 +75,17 @@
       (delete-file html-path))
     json))
 
-;;;; 助手函数
+
+(defun parse-guangdiu-content (url)
+  (let* ((script-path (concatenate 'string (config:c "js-path") "parse.guangdiu.index.js"))
+         (html-path (wget-data url))
+         (json (node-parse script-path html-path)))
+    (when json
+      (delete-file html-path))
+    json))
+
+         
+
 
 (defun gdindex-to-obj (jso)
   " guangdiu.com jso对象 转化为obj"
@@ -79,15 +97,28 @@
                    :belong-to (st-json:getjso "belongTo" jso)
                    :min-image (st-json:getjso "minImg" jso))))
 
+
+
+(defun get-real-mall-url (raw-url)
+  " 由于guangdiu上的直达链接 有多个，不同的链接需要不同处理。
+此函数包装这些链接的处理，统一返回商城url且去除不带推荐人ID "
+  (when (or 
+         (search "go.php?" raw-url)
+         (search "taobao" raw-url))
+    (when (search "go.php?" raw-url)
+      (setf raw-url (find-mall-url (concatenate 'string "http://guangdiu.com/" raw-url))))
+    (setf raw-url (cut-promote-id raw-url))
+    raw-url))
+
 (defun find-mall-url (raw-url)
-  " 由网站上提供的url来解析真正的商城url "
+  " 由网站上提供的跳转url来解析真正的商城url "
   (if (search "go.php?" raw-url)
       (let* ((return-str  (get-content raw-url))
              (reglist  (multiple-value-list (cl-ppcre:scan-to-strings "}\\((.+)\\)" return-str)))
              (data (cl-ppcre:split "," (elt (cadr reglist) 0))))
-        (destructuring-bind (url  num1 num2 vars init-num set) data
+        (destructuring-bind (raw-jscript-str  num1 num2 vars init-num set) data
           (declare (ignore num1 num2 init-num set))
-          (decode-mall-url url vars)))
+          (decode-mall-url raw-jscript-str vars)))
       raw-url))
 
 ;;;;; 工具函数
@@ -114,25 +145,32 @@
     (common::sh cmd)))
 
 
-(defun decode-mall-url (url vars)
-  (let* ((url (string-downcase (subseq url 1 (- (length url) 1))))
+(defun decode-mall-url (raw-jscript-str vars)
+  (let* ((raw-jscript-str (string-downcase (subseq raw-jscript-str 1 (- (length raw-jscript-str) 1))))
          (vars-list (cl-ppcre:split "\\|" (subseq vars 1 (- (length vars) 12)))))
     (loop for i in vars-list
        do (let* ((key (position i vars-list))
                  (key-in-36 (format nil "~36r" key)))
             (when (not (equal "" i))
-              (setf url (cl-ppcre:regex-replace-all  (concatenate 'string "\\b"
+              (setf raw-jscript-str (cl-ppcre:regex-replace-all  (concatenate 'string "\\b"
                                                                 (string-downcase key-in-36)
                                                                 "\\b")
-                                                                url i)))))
-    (ppcre:scan-to-strings "https?:/{2}\\w[^']+" url)))
-    
-    
-  
+                                                                raw-jscript-str i)))))
+    (ppcre:scan-to-strings "https?:/{2}\\w[^']+" raw-jscript-str)))
+
+(defun parse-html(url jscript-name)
+  (let* ((script-path (concatenate 'string (config:c "js-path") jscript-name))
+         (html-path (wget-data url))
+         (json (node-parse script-path html-path)))
+    (when json
+      (delete-file html-path))
+    json))
 
 
-
-
-
+;;;;; todo
+(defun cut-promote-id (url)
+  " 删除掉链接中的推广ID "
+;;  (common:write-log url))
+  url)
 
 
