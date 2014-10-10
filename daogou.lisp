@@ -31,16 +31,17 @@
    (goods :initarg () :accessor goods)))
 
 
-(defmethod gdobj-to-goodobj((gdobj guangdiu) (goods goods))
+(defmethod goods-factory((gdobj guangdiu) )
   " 通过gdobj提供的数据去生成goods的obj"
   (macrolet ((copy-slot (list target-obj source-obj)
                `(progn
                   ,@(loop for i in list
                        collect `(setf (,i ,target-obj) (,i ,source-obj))))))
     ;;; mall-url create-time content category participle click-total
-    (progn
-      (copy-slot (source min-image headline belong-to)  goods gdobj)
-      (setf (good-id goods) (get-universal-time)))))
+    (let* ((goods (make-instance 'goods)))
+      (progn
+        (copy-slot (source min-image headline belong-to)  goods gdobj)
+        (setf (good-id goods) (get-universal-time))))))
 
     
 ;;;;主函数
@@ -66,7 +67,31 @@
       (delete-file html-path))
     json))
 
-;;;; 辅助函数
+;;;; 助手函数
+
+(defun gdindex-to-obj (jso)
+  " guangdiu.com jso对象 转化为obj"
+  (when (typep jso 'st-json:jso)
+    (make-instance 'guangdiu :headline (st-json:getjso "title" jso)
+                   :mall-raw-url (st-json:getjso "mallRawUrl" jso)
+                   :source (st-json:getjso "source" jso)
+                   :content-url (st-json:getjso "contentUrl" jso)
+                   :belong-to (st-json:getjso "belongTo" jso)
+                   :min-image (st-json:getjso "minImg" jso))))
+
+(defun find-mall-url (raw-url)
+  " 由网站上提供的url来解析真正的商城url "
+  (if (search "go.php?" raw-url)
+      (let* ((return-str  (get-content raw-url))
+             (reglist  (multiple-value-list (cl-ppcre:scan-to-strings "}\\((.+)\\)" return-str)))
+             (data (cl-ppcre:split "," (elt (cadr reglist) 0))))
+        (destructuring-bind (url  num1 num2 vars init-num set) data
+          (declare (ignore num1 num2 init-num set))
+          (decode-mall-url url vars)))
+      raw-url))
+
+;;;;; 工具函数
+
 (defun get-content (url &key (encode :utf8))
   (let* ((user-agent (elt common:user-agents (random (length common:user-agents)))))
     (drakma:http-request url :external-format-in encode :user-agent user-agent)))
@@ -88,12 +113,26 @@
          (cmd (concatenate 'string node-path " " script-path " " html-path)))
     (common::sh cmd)))
 
-(defun gdindex-to-obj (jso)
-  " guangdiu.com jso对象 转化为obj"
-  (when (typep jso 'st-json:jso)
-    (make-instance 'guangdiu :headline (st-json:getjso "title" jso)
-                   :mall-raw-url (st-json:getjso "mallRawUrl" jso)
-                   :source (st-json:getjso "source" jso)
-                   :content-url (st-json:getjso "contentUrl" jso)
-                   :belong-to (st-json:getjso "belongTo" jso)
-                   :min-image (st-json:getjso "minImg" jso))))
+
+(defun decode-mall-url (url vars)
+  (let* ((url (string-downcase (subseq url 1 (- (length url) 1))))
+         (vars-list (cl-ppcre:split "\\|" (subseq vars 1 (- (length vars) 12)))))
+    (loop for i in vars-list
+       do (let* ((key (position i vars-list))
+                 (key-in-36 (format nil "~36r" key)))
+            (when (not (equal "" i))
+              (setf url (cl-ppcre:regex-replace-all  (concatenate 'string "\\b"
+                                                                (string-downcase key-in-36)
+                                                                "\\b")
+                                                                url i)))))
+    (ppcre:scan-to-strings "https?:/{2}\\w[^']+" url)))
+    
+    
+  
+
+
+
+
+
+
+
