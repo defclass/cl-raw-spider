@@ -37,15 +37,14 @@
                `(progn
                   ,@(loop for i in list
                        collect `(setf (,i ,target-obj) (,i ,source-obj))))))
-    ;;; mall-url create-time content category participle click-total
+    ;;; category participle click-total
     (let* ((goods (make-instance 'goods)))
       (progn
         (copy-slot (source min-image headline belong-to)  goods gdobj)
         (setf (good-id goods) (get-universal-time))
         (setf (mall-url goods) (get-real-mall-url (mall-raw-url gdobj)))
         (setf (create-time goods) (- (get-universal-time) (encode-universal-time 0 0 0 01 01 1970)))
-        ;; (setf (content goods) 
-        )
+        (setf (content goods) (get-gd-content (content-url gdobj))))
       goods)))
 
     
@@ -53,47 +52,38 @@
 
 (defun collect-gdindex-obj (url)
   (let* ((json (parse-guangdiu-index url))
-         (struct-data (when (eq :true (st-json:as-json-bool json))
-                        (st-json:read-json json))))
-    (if (and (typep struct-data 'st-json:jso)
-             (= 1 (st-json:getjso "status" struct-data)))
-        (let ((data (st-json:getjso "data" struct-data)))
+         (jso (make-jso-obj json)))
+    (if (jso-value "status" jso)
+        (let ((data (jso-value "data" jso)))
           (loop for i in data
-             collect (gdindex-to-obj i)))
+             collect (gdindex-factory i)))
         nil)))
-         
 
+(defun get-gd-content (url)
+  (let* ((json (parse-guangdiu-content url))
+         (jso (make-jso-obj json)))
+    (if (jso-value "status" jso)
+        (let ((data (jso-value "data" jso)))
+          (jso-value "content" data))
+        nil)))
 
+  
 ;;;; 助手函数
-
-               
 (defun parse-guangdiu-index (url)
-  (let* ((script-path (concatenate 'string (config:c "js-path") "parse.guangdiu.index.js"))
-         (html-path (wget-data url))
-         (json (node-parse script-path html-path)))
-    (when json
-      (delete-file html-path))
-    json))
+  (parse-html url "parse.guangdiu.index.js"))
 
 
 (defun parse-guangdiu-content (url)
-  (let* ((script-path (concatenate 'string (config:c "js-path") "parse.guangdiu.index.js"))
-         (html-path (wget-data url))
-         (json (node-parse script-path html-path)))
-    (when json
-      (delete-file html-path))
-    json))
-
-         
+  (parse-html url "parse.guangdiu.content.js"))
 
 
-(defun gdindex-to-obj (jso)
+(defun gdindex-factory (jso)
   " guangdiu.com jso对象 转化为obj"
   (when (typep jso 'st-json:jso)
     (make-instance 'guangdiu :headline (st-json:getjso "title" jso)
                    :mall-raw-url (st-json:getjso "mallRawUrl" jso)
                    :source (st-json:getjso "source" jso)
-                   :content-url (st-json:getjso "contentUrl" jso)
+                   :content-url (concatenate 'string "http://www.guangdiu.com/" (st-json:getjso "contentUrl" jso))
                    :belong-to (st-json:getjso "belongTo" jso)
                    :min-image (st-json:getjso "minImg" jso))))
 
@@ -110,6 +100,8 @@
     (setf raw-url (cut-promote-id raw-url))
     raw-url))
 
+
+
 (defun find-mall-url (raw-url)
   " 由网站上提供的跳转url来解析真正的商城url "
   (if (search "go.php?" raw-url)
@@ -120,6 +112,7 @@
           (declare (ignore num1 num2 init-num set))
           (decode-mall-url raw-jscript-str vars)))
       raw-url))
+
 
 ;;;;; 工具函数
 
@@ -163,7 +156,7 @@
          (html-path (wget-data url))
          (json (node-parse script-path html-path)))
     (when json
-      (delete-file html-path))
+     (delete-file html-path))
     json))
 
 
@@ -174,3 +167,14 @@
   url)
 
 
+(defun jso-value (key jso)
+  " 从一个jso 对象中 获取值"
+  (if (typep jso 'st-json:jso)
+      (st-json:getjso key  jso)
+      (error (concatenate 'string " 输入数据不是 jso 对象,key:" key ))))
+  
+(defun make-jso-obj(json)
+  " 将一个json数据转化为jso对象"
+  (if (eq :true (st-json:as-json-bool json))
+      (st-json:read-json json)
+      (error " 输入数据不是 json 格式")))
