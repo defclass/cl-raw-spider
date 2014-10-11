@@ -1,9 +1,5 @@
 (defpackage :common
-  (:use
-   :cl
-   :cl-ppcre
-   :cl-smtp
-   :cl-pop)
+  (:use :cl :cl-ppcre :cl-smtp :cl-pop)
   (:export
    ;;;;;;;;;;;;;;;;;;;
    ;;;; functions
@@ -23,25 +19,11 @@
   (:export c))
 
 (defpackage :daogou
-  (:use
-   :cl
-   :common
-   :cl-ppcre
-   :cl-smtp
-   :cl-pop
-   :babel)
-  (:export
-   *recoder-hash*
-   *all-contacts-info*    
-   *contacts-and-emails*  
-   *recorder-hash*))
-
+  (:use :cl :common)
+  (:export *recoder-hash* *all-contacts-info*
+           *contacts-and-emails* *recorder-hash*))
 
 
 (defpackage :test
-  (:use :cl
-        :cl-ppcre
-        :common
-        :cl-smtp
-        :cl-pop))
+  (:use :cl :cl-ppcre :common :cl-smtp :cl-pop))
 
