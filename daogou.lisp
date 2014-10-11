@@ -13,7 +13,7 @@
    (participle :initform "" :initarg  :participle :accessor participle)))
   
 (defclass goods()
-  ((good-id :initform (get-universal-time) :accessor good-id)
+  ((good-id :accessor good-id)
    (source :initform "" :initarg source :accessor source)
    (min-image :initarg :min-image :accessor min-image)
    (headline :initform "" :initarg :headline :accessor headline)
@@ -28,8 +28,9 @@
 
 (defclass collect()
   ((guangdiu :initform () :accessor guangdiu)
-   (goods :initarg () :accessor goods)))
+   (goods :initform () :accessor goods)))
 
+(defvar *collect* (make-instance 'collect))
 
 (defmethod goods-factory((gdobj guangdiu) )
   " 通过gdobj提供的数据去生成goods的obj"
@@ -37,7 +38,7 @@
                `(progn
                   ,@(loop for i in list
                        collect `(setf (,i ,target-obj) (,i ,source-obj))))))
-    ;;; category participle click-total
+    ;;; category participle click-total 未设定
     (let* ((goods (make-instance 'goods)))
       (progn
         (copy-slot (source min-image headline belong-to)  goods gdobj)
@@ -47,10 +48,13 @@
         (setf (content goods) (get-gd-content (content-url gdobj))))
       goods)))
 
+;; (defmethod save-good ((goods goods))
+;;   (
     
 ;;;;主函数
 
 (defun collect-gdindex-obj (url)
+  " 通过逛丢首页的url，来取得所有对象 "
   (let* ((json (parse-guangdiu-index url))
          (jso (make-jso-obj json)))
     (if (jso-value "status" jso)
@@ -59,7 +63,9 @@
              collect (gdindex-factory i)))
         nil)))
 
+
 (defun get-gd-content (url)
+  " 获取gd详情页的内容，返回字符串 "
   (let* ((json (parse-guangdiu-content url))
          (jso (make-jso-obj json)))
     (if (jso-value "status" jso)
@@ -70,17 +76,20 @@
   
 ;;;; 助手函数
 (defun parse-guangdiu-index (url)
+  " 解析逛丢的首页并返回json "
   (parse-html url "parse.guangdiu.index.js"))
 
 
 (defun parse-guangdiu-content (url)
+  " 解析逛丢的详情页并返回json "
   (parse-html url "parse.guangdiu.content.js"))
 
 
 (defun gdindex-factory (jso)
   " guangdiu.com jso对象 转化为obj"
   (when (typep jso 'st-json:jso)
-    (make-instance 'guangdiu :headline (st-json:getjso "title" jso)
+    (make-instance 'guangdiu
+                   :headline (st-json:getjso "title" jso)
                    :mall-raw-url (st-json:getjso "mallRawUrl" jso)
                    :source (st-json:getjso "source" jso)
                    :content-url (concatenate 'string "http://www.guangdiu.com/" (st-json:getjso "contentUrl" jso))
@@ -106,8 +115,8 @@
   " 由网站上提供的跳转url来解析真正的商城url "
   (if (search "go.php?" raw-url)
       (let* ((return-str  (get-content raw-url))
-             (reglist  (multiple-value-list (cl-ppcre:scan-to-strings "}\\((.+)\\)" return-str)))
-             (data (cl-ppcre:split "," (elt (cadr reglist) 0))))
+             (reglist  (multiple-value-list (cl-ppcre::scan-to-strings "}\\((.+)\\)" return-str)))
+             (data (cl-ppcre::split "," (elt (cadr reglist) 0))))
         (destructuring-bind (raw-jscript-str  num1 num2 vars init-num set) data
           (declare (ignore num1 num2 init-num set))
           (decode-mall-url raw-jscript-str vars)))
@@ -117,8 +126,9 @@
 ;;;;; 工具函数
 
 (defun get-content (url &key (encode :utf8))
+  " 获取网页html内容 "
   (let* ((user-agent (elt common:user-agents (random (length common:user-agents)))))
-    (drakma:http-request url :external-format-in encode :user-agent user-agent)))
+    (drakma::http-request url :external-format-in encode :user-agent user-agent)))
 
 (defun wget-data(url)
   " 获取html文件并将其写入到/tmp/目录中"
@@ -139,19 +149,21 @@
 
 
 (defun decode-mall-url (raw-jscript-str vars)
+  " 解密真实的url地址 "
   (let* ((raw-jscript-str (string-downcase (subseq raw-jscript-str 1 (- (length raw-jscript-str) 1))))
-         (vars-list (cl-ppcre:split "\\|" (subseq vars 1 (- (length vars) 12)))))
+         (vars-list (cl-ppcre::split "\\|" (subseq vars 1 (- (length vars) 12)))))
     (loop for i in vars-list
        do (let* ((key (position i vars-list))
                  (key-in-36 (format nil "~36r" key)))
             (when (not (equal "" i))
-              (setf raw-jscript-str (cl-ppcre:regex-replace-all  (concatenate 'string "\\b"
+              (setf raw-jscript-str (cl-ppcre::regex-replace-all  (concatenate 'string "\\b"
                                                                 (string-downcase key-in-36)
                                                                 "\\b")
                                                                 raw-jscript-str i)))))
-    (ppcre:scan-to-strings "https?:/{2}\\w[^']+" raw-jscript-str)))
+    (ppcre::scan-to-strings "https?:/{2}\\w[^']+" raw-jscript-str)))
 
 (defun parse-html(url jscript-name)
+  " 通用函数，给定url 和 解析网页的js脚本 "
   (let* ((script-path (concatenate 'string (config:c "js-path") jscript-name))
          (html-path (wget-data url))
          (json (node-parse script-path html-path)))
@@ -178,3 +190,6 @@
   (if (eq :true (st-json:as-json-bool json))
       (st-json:read-json json)
       (error " 输入数据不是 json 格式")))
+
+;; (defun test ()
+;;   (cl-mysql:connect :host 
