@@ -12,6 +12,7 @@
                  "babel"
                  "cl-ppcre"
                  "closure-html"
+                 "cl-mysql"
                  "babel"
                  "cxml-stp"
                  "split-sequence"
