@@ -19,7 +19,7 @@
   (:export c))
 
 (defpackage :daogou
-  (:use :cl :common)
+  (:use :cl :common :config)
   (:export *recoder-hash* *all-contacts-info*
            *contacts-and-emails* *recorder-hash*))
 

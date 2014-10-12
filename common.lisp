@@ -19,6 +19,10 @@
 (defun plist-value (key plist)
   (cdr (assoc key plist :test  #'string=)))
 
+(defun setf-plist (key plist value)
+  (setf (cdr (assoc key plist :test  #'string=))
+        value))
+
 
 (defun sh (cmd)
     #+clisp

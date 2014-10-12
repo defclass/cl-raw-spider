@@ -13,7 +13,7 @@
                  "cl-ppcre"
                  "closure-html"
                  "cl-mysql"
-                 "babel"
+                 "cl-store"
                  "cxml-stp"
                  "split-sequence"
                  "trivial-dump-core"
