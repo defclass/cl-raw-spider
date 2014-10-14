@@ -34,20 +34,35 @@
 (defvar *collect* (make-instance 'collect)
   " 全局变量*collect* 收集 goods 对象和guangdiu对象 ")
 
+(defvar *connect* nil
+  " Mysql 连接的全局变量")
+
+(defparameter base-url "http://guangdiu.com/index.php?p=")
+
+
+
 ;;; 主方法
 (defmethod collect-goods ((collect collect))
   " 将 goods 对象存入 *collect* 中"
-  (let ((gdobj-list (guangdiu collect)))
-    (loop for gdobj in gdobj-list
-       do (setf (goods collect)
+  (let ((gdobj-list (reverse (guangdiu collect))))
+    (when gdobj-list
+      (progn
+        (loop for gdobj in gdobj-list
+           do (let ((good (create-good gdobj)))
+               (when good
+                 (setf (goods collect)
                        (append (goods collect)
-                               (list (create-good gdobj)))))))
+                               (list good))))))
+        t))))
 
 (defmethod save-goods ((collect collect))
   " 对 *collect*中的goods对象保存到数据库 "
-  (let ((goods (goods collect)))
+  (let ((goods (goods collect))
+        (dividing-obj (car (guangdiu *collect*))))
     (loop for i in goods
-         do (save-good i))))
+       do (save-good i))
+    (when dividing-obj
+      (save-gg-dividing-obj (car (guangdiu *collect*))))))
 
 ;;; 辅助方法
 (defmethod create-good ((gdobj guangdiu))
@@ -58,34 +73,38 @@
                        collect `(setf (,i ,target-obj) (,i ,source-obj))))))
     ;;; category participle click-total 未设定
     (let* ((goods (make-instance 'goods)))
-      (progn
-        (copy-slot (source min-image headline belong-to)  goods gdobj)
-        (setf (good-id goods) (get-universal-time))
-        (setf (mall-url goods) (get-real-mall-url (mall-raw-url gdobj)))
-        (setf (create-time goods) (- (get-universal-time) (encode-universal-time 0 0 0 01 01 1970)))
-        (setf (content goods) (get-gd-content (content-url gdobj))))
-      goods)))
+      (handler-case 
+          (progn
+            (copy-slot (source min-image headline belong-to)  goods gdobj)
+            (setf (good-id goods) (get-universal-time))
+            (setf (mall-url goods) (get-real-mall-url (mall-raw-url gdobj)))
+            (setf (create-time goods) (- (get-universal-time) (encode-universal-time 0 0 0 01 01 1970)))
+            (setf (content goods) (get-gd-content (content-url gdobj)))
+            goods)
+        (failed-to-get-content ()
+          (format t "获取内容失败,失败信息:~A 放弃重试~%" (get-content-failed-message)))))))
 
 (defmethod save-good ((goods goods))
   (if (not *CONNECT*)
       (connect)
-      (with-slots ((source source)
+      (with-slots ((slot-source source)
                    (min-image min-image)
                    (mall-url mall-url)
-                   (headline headline)
+                   (slot-headline headline)
                    (create-time create-time)
-                   (belong-to belong-to)
-                   (content content)) goods
-        (let (sql)
+                   (slot-belong-to belong-to)
+                   (slot-content content)) goods
+        (let (sql headline belong-to content source)
           (progn
-            (setf headline (mysql-escape-string headline))
-            (setf belong-to (mysql-escape-string belong-to))
-            (setf content (mysql-escape-string content))
-            (setf source (mysql-escape-string source))
+            (setf headline (mysql-escape-string slot-headline))
+            (setf belong-to (mysql-escape-string slot-belong-to))
+            (setf content (mysql-escape-string slot-content))
+            (setf source (mysql-escape-string slot-source))
             (setf sql (concatenate 'string " insert into `dg-good` (`source`,`min-image`,`mall-url`,`headline`,`create-time`,`belong-to`,`content`) values  ('" source "','" min-image "','" mall-url "','" headline "','" (write-to-string create-time) "','"  belong-to "','" content "');"))
-            (princ headline)
-            (cl-mysql:query sql)
-            (save-gg-dividing-obj (car (guangdiu *collect*))))))))
+            (handler-case 
+                (cl-mysql:query sql)
+              (COM.HACKINGHAT.CL-MYSQL-SYSTEM:MYSQL-ERROR ()
+                (common::write-log (concatenate 'string "[error] sql执行失败: " sql)))))))))
 
 (defvar *dividing-line* '(("guangdiu" . ()))
   " This var saved the dividing-line object")
@@ -103,8 +122,8 @@
                     (setf position (position gg-obj gg-list))))
             (cond
               (position (progn
-                          (setf gg-list (subseq gg-list 0 position))
-                          t))
+                          (setf gg-list (subseq gg-list 0 position)))
+                          t)
               (t nil))))
         (error "*collect*对象slot:raw-ggs 值为nil或不是list类型,不能执行 new-gg方法"))))
 
@@ -121,16 +140,38 @@
               
 ;;;;主函数
 
-(defun main()
-    (progn
-      (write-log "info:收集guangdiu")
-      (collect-gd-obj *collect*)
-      (write-log "info:收集goods")
-      (collect-goods *collect*)
-      (write-log "info:保存到mysql")
-      (save-goods  *collect*)))
+(defun enter()
+  (loop
+     do (PROGN
+          (main)
+          (format t "休息1分钟~2%")
+          (sleep 60))))
+  
 
-(defparameter base-url "http://guangdiu.com/index.php?p=")
+(defun main()
+  (progn
+    (init)
+    (write-log "info:收集guangdiu")
+    (collect-gd-obj base-url)
+    (if (and (write-log "info:收集goods")
+             (collect-goods *collect*))
+        (PROGN
+          (write-log "info:保存到mysql")
+          (save-goods  *collect*)
+          (write-log "info:保存到wordpress")
+          (save-to-wordpress))
+        (progn
+          (write-log "info:没有要保存的goods")))))
+          
+
+(defun init()
+  (PROGN
+    (unless (get-gg-dividing-obj)
+      (write-log "info:初始化dividing")
+      (init-dividing))
+    ;; init *collect*
+    (setf *collect* (make-instance 'collect))))
+    
 (defun collect-gd-obj (base-url)
   (loop
      with flag = t
@@ -150,7 +191,7 @@
             (setf (raw-ggs *collect*) nil)))))
                      
 (defun gd-index-to-obj (url)
-  " 通过逛丢首页的url，来取得所有对象 返回值是list "
+  " 通过逛丢列表页的url，来取得所有对象 返回值是list "
   (let* ((json (parse-guangdiu-index url))
          (jso (make-jso-obj json)))
     (if (jso-value "status" jso)
@@ -179,13 +220,17 @@
   " 解析逛丢的详情页并返回json "
   (parse-html url "parse.guangdiu.content.js"))
 
+(defun save-to-wordpress()
+  (common::sh (concatenate 'string "php " (c "php-path") "update-to-wordpress.php")))
+  
+
 (defun get-real-mall-url (raw-url)
   " 由于guangdiu上的直达链接 有多个，不同的链接需要不同处理。
 此函数包装这些链接的处理，统一返回商城url且去除不带推荐人ID "
-  (progn
-    (write-log (concatenate 'string "info:请求中转链接" raw-url))
     (when (search "go.php?" raw-url)
-      (setf raw-url (find-mall-url  raw-url))))
+      (PROGN
+        (write-log (concatenate 'string "info:请求中转链接" raw-url))
+        (setf raw-url (find-mall-url  raw-url))))
   raw-url)
 
 (defun find-mall-url (raw-url)
@@ -211,6 +256,16 @@
                    :belong-to (st-json:getjso "belongTo" jso)
                    :min-image (st-json:getjso "minImg" jso))))
 
+(defun init-dividing()
+  (unless (get-gg-dividing-obj)
+    (let (objs obj)
+      (setf objs (gd-index-to-obj
+                  (concatenate 'string base-url (write-to-string 1))))
+      (setf obj (car objs))
+      (save-gg-dividing-obj obj))))
+    
+      
+
 (defun get-gg-dividing-obj ()
   " 获取 guangdiu 分界 obj"
   (read-dividing-var)
@@ -222,20 +277,35 @@
 
 ;;;;; 工具函数
 
-(defun get-content (url &key (encode :utf8))
+(defun get-content (url &key (encode :utf-8))
   " 获取网页html内容 "
-  (let* ((user-agent (elt common:user-agents (random (length common:user-agents)))))
-    (format t "正在获取链接：~A~%" url)
-    (handler-case 
-        (drakma::http-request url :external-format-in encode :user-agent user-agent)
+  (let* ((user-agent (elt common:user-agents (random (length common:user-agents))))
+         binary)
+    (handler-case
+        (progn
+          (setf binary (drakma::http-request url :force-binary t :user-agent user-agent))
+          (sb-ext::octets-to-string binary :EXTERNAL-FORMAT encode))
+      (USOCKET:NS-HOST-NOT-FOUND-ERROR ()
+        (PROGN
+          (format t "DNS解析错误重新获取:~%   url:~A ~%" url)
+          (get-content url)))
       (USOCKET:TIMEOUT-ERROR ()
         (PROGN
-          (format t "url:~A ~% 超时错误~3%" url)
-          (drakma::http-request url :external-format-in encode :user-agent user-agent))))))
+          (format t "超时错误重新获取~% url:~A ~%" url)
+          (get-content url)))
+      (SB-IMPL::INVALID-UTF8-STARTER-BYTE ()
+        (progn
+          (format t "UTF8解码错误~% 尝试GBK解码~%")
+          (get-content url :encode :gbk)))
+      (SB-IMPL::MALFORMED-GBK ()
+        (error 'failed-to-get-content :message "获取文本失败")))))
+      
            
 (defun wget-data(url)
   " 获取html文件并将其写入到/tmp/目录中"
-  (let* ((html (get-content url))
+  (let* ((html (progn
+                 (format t "保存链接内容:~A~%" url)
+                 (get-content url)))
          (html-path (concatenate 'string (CONFIG:c "data-path")
                                  (write-to-string (get-universal-time)))))
     (if html
@@ -296,7 +366,6 @@
       (st-json:read-json json)
       (error " 输入数据不是 json 格式")))
 
-(defvar *connect* nil)
 (defun connect ()
   (setf *connect*
         (cl-mysql:connect :host (c "db-host")
@@ -310,8 +379,8 @@
         (format t "~A~%" str)
         (error "function: mysql-escape-string var is not string"))
       (progn
-        (cl-ppcre:regex-replace-all "'" str "\\\\'")
-        (cl-ppcre:regex-replace-all "\"" str "\\\\\""))))
+        (setf str (cl-ppcre:regex-replace-all "'" str "\\\\'"))
+        (setf str (cl-ppcre:regex-replace-all "\"" str "\\\\\"")))))
        
 (defun save-dividing-var ()
   (cl-store::store *dividing-line* (c "dividing-line-filepath")))

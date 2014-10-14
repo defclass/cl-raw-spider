@@ -27,3 +27,8 @@
 (defpackage :test
   (:use :cl :cl-ppcre :common :cl-smtp :cl-pop))
 
+
+(in-package :daogou)
+(define-condition failed-to-get-content (error)
+  ((message :initform nil :initarg :message :reader get-content-failed-message)))
+
