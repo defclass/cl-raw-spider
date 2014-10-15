@@ -221,7 +221,7 @@
   (parse-html url "parse.guangdiu.content.js"))
 
 (defun save-to-wordpress()
-  (common::sh (concatenate 'string "php " (c "php-path") "update-to-wordpress.php")))
+  (common::sh (concatenate 'string "/usr/bin/php " (c "php-path") "update-to-wordpress.php")))
   
 
 (defun get-real-mall-url (raw-url)
