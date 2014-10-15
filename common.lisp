@@ -1,11 +1,14 @@
 (cl:in-package :common)
 (defun write-log (str &key (stdout t)  )
-  (with-open-file (s "~/Desktop/lisp.log" :direction :output :if-exists :append :if-does-not-exist :create)
-    (progn
-      (when stdout
-        (format t "~A~%" str))
-      (format s "~A~%" str)
-      t)))
+  (when stdout
+    (format t "~A~%" str)))
+
+  ;; (with-open-file (s "./common.lisp" :direction :output :if-exists :append :if-does-not-exist :create)
+  ;;   (progn
+  ;;     (when stdout
+  ;;       (format t "~A~%" str))
+  ;;     (format s "~A~%" str)
+  ;;     t)))
 
 (defun read-file-to-str (path)
   (let* ((stream (open path)))
