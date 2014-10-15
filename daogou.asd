@@ -15,8 +15,6 @@
                  "cl-mysql"
                  "cl-store"
                  "cxml-stp"
-                 "split-sequence"
-                 "trivial-dump-core"
                  )
     :components ((:file "package")
                  (:file "user_agents" :depends-on ("package"))
