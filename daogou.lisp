@@ -81,8 +81,8 @@
             (setf (create-time goods) (- (get-universal-time) (encode-universal-time 0 0 0 01 01 1970)))
             (setf (content goods) (get-gd-content (content-url gdobj)))
             goods)
-        (failed-to-get-content ()
-          (format t "获取内容失败,失败信息:~A 放弃重试~%" (get-content-failed-message)))))))
+        (failed-to-get-content (cond-obj)
+          (format t "获取内容失败,失败信息:~A 放弃重试~%" (get-content-failed-message cond-obj)))))))
 
 (defmethod save-good ((goods goods))
   (if (not *CONNECT*)
