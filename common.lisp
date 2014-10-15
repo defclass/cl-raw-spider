@@ -1,7 +1,8 @@
 (cl:in-package :common)
 (defun write-log (str &key (stdout t)  )
   (when stdout
-    (format t "~A~%" str)))
+    (format t "~A~%" str))
+  t)
 
   ;; (with-open-file (s "./common.lisp" :direction :output :if-exists :append :if-does-not-exist :create)
   ;;   (progn
