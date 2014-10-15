@@ -1,2 +1,4 @@
 *.fasl
 dividing
+php/deadline
+config.lisp
