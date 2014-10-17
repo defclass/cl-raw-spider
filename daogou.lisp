@@ -227,7 +227,10 @@
 (defun get-real-mall-url (raw-url)
   " 由于guangdiu上的直达链接 有多个，不同的链接需要不同处理。
 此函数包装这些链接的处理，统一返回商城url且去除不带推荐人ID "
-    (when (search "go.php?" raw-url)
+    (when (and (not nil)
+               (typep raw-url 'string)
+               (> (length raw-url) 0)
+               (search "go.php?" raw-url))
       (PROGN
         (write-log (concatenate 'string "info:请求中转链接" raw-url))
         (setf raw-url (find-mall-url  raw-url))))
@@ -335,8 +338,11 @@
                                                                                  (string-downcase key-in-36)
                                                                                  "\\b")
                                                                     raw-jscript-str i)))))
-      (setf raw-url (ppcre::scan-to-strings "https?:/{2}\\w[^']+" raw-jscript-str))
-      (subseq raw-url 0 (- (length raw-url) 1)))))
+      (when raw-jscript-str
+        (progn
+          (setf raw-url (ppcre::scan-to-strings "https?:/{2}\\w[^']+" raw-jscript-str))
+          (when raw-url
+            (subseq raw-url 0 (- (length raw-url) 1))))))))
 
 (defun parse-html(url jscript-name)
   " 通用函数，给定url 和 解析网页的js脚本 "
@@ -388,5 +394,3 @@
 (defun read-dividing-var ()
   (setf *dividing-line*
         (cl-store::restore (c "dividing-line-filepath"))))
-  
-                      
