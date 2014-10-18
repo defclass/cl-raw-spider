@@ -227,14 +227,16 @@
 (defun get-real-mall-url (raw-url)
   " 由于guangdiu上的直达链接 有多个，不同的链接需要不同处理。
 此函数包装这些链接的处理，统一返回商城url且去除不带推荐人ID "
-    (when (and (not nil)
+    (if (and (not nil)
                (typep raw-url 'string)
                (> (length raw-url) 0)
                (search "go.php?" raw-url))
-      (PROGN
-        (write-log (concatenate 'string "info:请求中转链接" raw-url))
-        (setf raw-url (find-mall-url  raw-url))))
-  raw-url)
+        (PROGN
+          (write-log (concatenate 'string "info:请求中转链接" raw-url))
+          (let*  ((mall-url-and-origin-promoteid (find-mall-url  raw-url)))
+            (when mall-url-and-origin-promoteid
+              (replace-promote-id mall-url-and-origin-promoteid))))
+        raw-url))
 
 (defun find-mall-url (raw-url)
   " 此函数为 get-real-mall-url 的工具函数，调用时使用get-real-mall-url
@@ -355,10 +357,25 @@
 
 
 ;;;;; todo
-(defun cut-promote-id (url)
-  " 删除掉链接中的推广ID "
-  ;;  (common:write-log url))
-  url)
+(defun replace-promote-id (url)
+  " 替换掉链接中的推广ID "
+  (if url
+      (let ((my-mall-url))
+        (progn 
+          (setf my-mall-url
+                (cond
+                  ((search "duomai" url) (replace-duomai-promote-id url))
+                  (t url)))
+          (common:write-log (concatenate 'string "promote-id替换成:" my-mall-url))
+          (replace-duomai-promote-id my-mall-url)))
+      url))
+
+(defun replace-duomai-promote-id(url)
+  " 替换多麦推广平台上的链接 "
+  (if (and url (typep url 'string) (search "duomai" url))
+      (cl-ppcre::regex-replace-all  "site_id=\\d+" url "site_id=135082")
+      url))
+             
 
 (defun jso-value (key jso)
   " 从一个jso 对象中 获取值"
