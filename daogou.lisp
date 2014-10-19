@@ -227,16 +227,19 @@
 (defun get-real-mall-url (raw-url)
   " 由于guangdiu上的直达链接 有多个，不同的链接需要不同处理。
 此函数包装这些链接的处理，统一返回商城url且去除不带推荐人ID "
-    (if (and (not nil)
-               (typep raw-url 'string)
-               (> (length raw-url) 0)
-               (search "go.php?" raw-url))
-        (PROGN
-          (write-log (concatenate 'string "info:请求中转链接" raw-url))
-          (let*  ((mall-url-and-origin-promoteid (find-mall-url  raw-url)))
-            (when mall-url-and-origin-promoteid
-              (replace-promote-id mall-url-and-origin-promoteid))))
-        raw-url))
+  (if (typep raw-url 'string)
+      (progn 
+        (write-log (concatenate 'string "info:请求中转链接" raw-url))
+        (cond
+          ((search "go.php?" raw-url)
+         (PROGN
+           (write-log (concatenate 'string "info:请求中转链接" raw-url))
+           (let*  ((mall-url-and-origin-promoteid (find-mall-url  raw-url)))
+             (when mall-url-and-origin-promoteid
+               (replace-promote-id mall-url-and-origin-promoteid)))))
+        (t raw-url)))
+      raw-url))
+                   
 
 (defun find-mall-url (raw-url)
   " 此函数为 get-real-mall-url 的工具函数，调用时使用get-real-mall-url
@@ -273,7 +276,7 @@
                              (char/= pre-char #\\)) (setf quote-flag nil))))
                    (vector-push-extend char var)
                    (setf pre-char char)))))
-         vars-list))))
+         vars-list)))
                                               
 
 
@@ -362,10 +365,14 @@
                  (if (and (alpha-char-p char)
                           (upper-case-p char))
                      (- (char-int char) 29)
-                     (digit-char-p char 36))))
+                     (progn
+                       (digit-char-p char 36) ))))
              (replace-fun (match vars-list)
                (let* ((index (decode-match match))
-                      (replacement (elt vars-list index)))
+                      (replacement (if (or (>= index (length vars-list))
+                                           (not (elt vars-list index)))
+                                       match
+                                       (elt vars-list index))))
                  (if (not (string= replacement ""))
                      replacement
                      match))))
