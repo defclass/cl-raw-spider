@@ -376,17 +376,17 @@
                  (if (not (string= replacement ""))
                      replacement
                      match))))
-      (setf js-script (cl-ppcre::regex-replace-all "\\b\\w+\\b"
+      (progn 
+      (setf js-script (cl-ppcre::regex-replace-all "\\b[0-9a-zA-Z]\\b"
                                                    raw-jscript-str
                                                    #'(lambda (match)
                                                        (replace-fun match vars-list))
-                                                   :simple-calls t
-                                                   ))
+                                                   :simple-calls t))
       (when js-script
         (progn
           (setf raw-url (ppcre::scan-to-strings "https?:/{2}\\w[^']+" js-script))
           (when raw-url
-            (subseq raw-url 0 (- (length raw-url) 1))))))))
+            (subseq raw-url 0 (- (length raw-url) 1)))))))))
           
 
 (defun parse-html(url jscript-name)
