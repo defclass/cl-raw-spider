@@ -43,3 +43,10 @@
       (sb-ext:run-program "/bin/sh" (list "-c" cmd) :input nil :output stream))
     #+clozure
         (ccl:run-program "/bin/sh" (list "-c" cmd) :input nil :output *standard-output*))
+
+(defun make-adjustable-string (s)
+  (make-array (length s)
+              :fill-pointer (length s)
+              :adjustable t
+              :initial-contents s
+              :element-type (array-element-type s)))

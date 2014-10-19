@@ -244,11 +244,38 @@
   (if (search "go.php?" raw-url)
       (let* ((return-str  (get-content raw-url))
              (reglist  (multiple-value-list (cl-ppcre::scan-to-strings "}\\((.+)\\)" return-str)))
-             (data (cl-ppcre::split "," (elt (cadr reglist) 0))))
-        (destructuring-bind (raw-jscript-str  num1 num2 vars init-num set) data
-          (declare (ignore num1 num2 init-num set))
+             (data (destructuring-js-var (elt (cadr reglist) 0))))
+        (destructuring-bind (raw-jscript-str  num1 num2 vars init-num) data
+          (declare (ignore num1 num2 init-num ))
           (decode-mall-url raw-jscript-str vars)))
       raw-url))
+
+(defun destructuring-js-var (str)
+  " 解析 js 的参数列表"
+  (when (typep str 'string)
+    (let (vars-list)
+      (loop for char across str
+         with var = (common::make-adjustable-string "")
+         with quote-flag = nil
+         with pre-char
+         do (cond
+              ((and (char= char #\,)
+                    (not (find quote-flag "'\""))) (progn
+                                                     (setf vars-list (append vars-list (list var)))
+                                                     (setf var (common::make-adjustable-string ""))
+                                                     (setf quote-flag nil)
+                                                     (setf pre-char nil)))
+              (t (progn
+                   (when (find char "'\"")
+                     (cond
+                       ((not quote-flag) (setf quote-flag char))
+                       ((and (char= char quote-flag)
+                             (char/= pre-char #\\)) (setf quote-flag nil))))
+                   (vector-push-extend char var)
+                   (setf pre-char char)))))
+         vars-list))))
+                                              
+
 
 (defun gdindex-factory (jso)
   " guangdiu.com jso对象 转化为obj"
@@ -327,24 +354,33 @@
 
 
 (defun decode-mall-url (raw-jscript-str vars)
-  " 解密真实的url地址 "
-  (let* ((raw-jscript-str (string-downcase (subseq raw-jscript-str 1 (- (length raw-jscript-str) 1))))
+  (let* ((raw-jscript-str (subseq raw-jscript-str 1 (- (length raw-jscript-str) 1)))
          (vars-list (cl-ppcre::split "\\|" (subseq vars 1 (- (length vars) 12))))
-         raw-url)
-    (progn
-      (loop for i in vars-list
-         do (let* ((key (position i vars-list))
-                   (key-in-36 (format nil "~36r" key)))
-              (when (not (equal "" i))
-                (setf raw-jscript-str (cl-ppcre::regex-replace-all  (concatenate 'string "\\b"
-                                                                                 (string-downcase key-in-36)
-                                                                                 "\\b")
-                                                                    raw-jscript-str i)))))
-      (when raw-jscript-str
+         js-script raw-url)
+    (labels ((decode-match (match)
+               (let ((char (elt match 0)))
+                 (if (and (alpha-char-p char)
+                          (upper-case-p char))
+                     (- (char-int char) 29)
+                     (digit-char-p char 36))))
+             (replace-fun (match vars-list)
+               (let* ((index (decode-match match))
+                      (replacement (elt vars-list index)))
+                 (if (not (string= replacement ""))
+                     replacement
+                     match))))
+      (setf js-script (cl-ppcre::regex-replace-all "\\b\\w+\\b"
+                                                   raw-jscript-str
+                                                   #'(lambda (match)
+                                                       (replace-fun match vars-list))
+                                                   :simple-calls t
+                                                   ))
+      (when js-script
         (progn
-          (setf raw-url (ppcre::scan-to-strings "https?:/{2}\\w[^']+" raw-jscript-str))
+          (setf raw-url (ppcre::scan-to-strings "https?:/{2}\\w[^']+" js-script))
           (when raw-url
             (subseq raw-url 0 (- (length raw-url) 1))))))))
+          
 
 (defun parse-html(url jscript-name)
   " 通用函数，给定url 和 解析网页的js脚本 "
