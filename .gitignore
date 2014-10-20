@@ -1,7 +1,7 @@
 *.fasl
 dividing
 php/deadline
-php/config.php
+php/environment.php
 config.lisp
 php/test.php
 
