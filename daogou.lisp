@@ -78,6 +78,7 @@
             (copy-slot (source min-image headline belong-to)  goods gdobj)
             (setf (good-id goods) (get-universal-time))
             (setf (mall-url goods) (get-real-mall-url (mall-raw-url gdobj)))
+            (format t "商城地址：~A~%" (mall-url goods))
             (setf (create-time goods) (- (get-universal-time) (encode-universal-time 0 0 0 01 01 1970)))
             (setf (content goods) (get-gd-content (content-url gdobj)))
             goods)
@@ -228,8 +229,6 @@
   " 由于guangdiu上的直达链接 有多个，不同的链接需要不同处理。
 此函数包装这些链接的处理，统一返回商城url且去除不带推荐人ID "
   (if (typep raw-url 'string)
-      (progn 
-        (write-log (concatenate 'string "info:请求中转链接" raw-url))
         (cond
           ((search "go.php?" raw-url)
          (PROGN
@@ -237,7 +236,7 @@
            (let*  ((mall-url-and-origin-promoteid (find-mall-url  raw-url)))
              (when mall-url-and-origin-promoteid
                (replace-promote-id mall-url-and-origin-promoteid)))))
-        (t raw-url)))
+        (t raw-url))
       raw-url))
                    
 
