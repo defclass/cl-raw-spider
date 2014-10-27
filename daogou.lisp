@@ -332,7 +332,11 @@
           (format t "UTF8解码错误~% 尝试GBK解码~%")
           (get-content url :encode :gbk)))
       (SB-IMPL::MALFORMED-GBK ()
-        (error 'failed-to-get-content :message "获取文本失败")))))
+        (error 'failed-to-get-content :message "获取文本失败"))
+      (CHUNGA:INPUT-CHUNKING-UNEXPECTED-END-OF-FILE ()
+        (PROGN
+          (format t "INPUT-CHUNKING-UNEXPECTED-END-OF-FILE~%")
+          (get-content url))))))
       
            
 (defun wget-data(url)
