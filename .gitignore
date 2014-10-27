@@ -1,7 +1,8 @@
 *.fasl
-dividing
-php/deadline
-php/environment.php
-config.lisp
-php/test.php
+/log
+/dividing
+/php/deadline
+/php/environment.php
+/config.lisp
+/php/test.php
 

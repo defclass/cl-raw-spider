@@ -1,15 +1,10 @@
-(cl:in-package :common)
+(cl:in-package :nixiwan)
+
 (defun write-log (str &key (stdout t)  )
   (when stdout
     (format t "~A~%" str))
   t)
 
-  ;; (with-open-file (s "./common.lisp" :direction :output :if-exists :append :if-does-not-exist :create)
-  ;;   (progn
-  ;;     (when stdout
-  ;;       (format t "~A~%" str))
-  ;;     (format s "~A~%" str)
-  ;;     t)))
 
 (defun read-file-to-str (path)
   (let* ((stream (open path)))
@@ -31,18 +26,18 @@
 
 
 (defun sh (cmd)
-    #+clisp
-        (let ((str (ext:run-shell-command cmd :output:stream)))
-            (loop for line = (read-line str nil)
-             until (null line)
-             do (print line)))
-    #+ecl
-        (si:system cmd)
-    #+sbcl
-    (with-output-to-string (stream )
-      (sb-ext:run-program "/bin/sh" (list "-c" cmd) :input nil :output stream))
-    #+clozure
-        (ccl:run-program "/bin/sh" (list "-c" cmd) :input nil :output *standard-output*))
+  #+clisp
+  (let ((str (ext:run-shell-command cmd :output:stream)))
+    (loop for line = (read-line str nil)
+       until (null line)
+       do (print line)))
+  #+ecl
+  (si:system cmd)
+  #+sbcl
+  (with-output-to-string (stream )
+    (sb-ext:run-program "/bin/sh" (list "-c" cmd) :input nil :output stream))
+  #+clozure
+  (ccl:run-program "/bin/sh" (list "-c" cmd) :input nil :output *standard-output*))
 
 (defun make-adjustable-string (s)
   (make-array (length s)
