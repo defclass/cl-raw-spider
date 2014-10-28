@@ -11,6 +11,10 @@
 (defvar *db-info* nil "Database username and so on")
 (defvar *paths* nil "Node path ,php path and so on")
 
+(defparameter base-url "http://guangdiu.com/index.php?p=")
+(defvar *dividing-line* '(("guangdiu" . ()))
+  " This var saved the dividing-line object")
+
 
 (log:trace "开始定义类")
 ;;;;定义类

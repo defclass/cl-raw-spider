@@ -1,11 +1,5 @@
 (cl:in-package :nixiwan)
 
-(defun write-log (str &key (stdout t)  )
-  (when stdout
-    (format t "~A~%" str))
-  t)
-
-
 (defun read-file-to-str (path)
   (let* ((stream (open path)))
     (with-output-to-string (out)
@@ -33,11 +27,17 @@
        do (print line)))
   #+ecl
   (si:system cmd)
+  
   #+sbcl
   (with-output-to-string (stream )
-    (sb-ext:run-program "/bin/sh" (list "-c" cmd) :input nil :output stream))
+    (sb-ext:run-program "/bin/sh"
+                        (list "-c" cmd) :input nil :output stream))
   #+clozure
-  (ccl:run-program "/bin/sh" (list "-c" cmd) :input nil :output *standard-output*))
+  (ccl:run-program "/bin/sh"
+                   (list "-c" cmd)
+                   :input nil
+                   :output *standard-output*))
+
 
 (defun make-adjustable-string (s)
   (make-array (length s)

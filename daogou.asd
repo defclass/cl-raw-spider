@@ -8,7 +8,7 @@
                  :cl-json
                  :crane
                  :alexandria
-                 :cl-json
+                 :st-json
                  :local-time
                  :closer-mop
                  :log4cl
