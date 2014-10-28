@@ -11,6 +11,8 @@
                  :st-json
                  :local-time
                  :closer-mop
+                 :symbol-munger
+                 :iterate
                  :log4cl
                  :cl-store)
     :description "nixiwan.com"
