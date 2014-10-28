@@ -326,16 +326,16 @@
         (log:error "输入数据不是 json 格式:~A" json)
         (error 'json-error :message  "输入数据不是 json 格式"))))
 
-;; (defun connect ()
-;;   (progn
-;;     (crane:setup
-;;      :databases
-;;      `(:main
-;;        (:type :mysql
-;;               :name ,(get-db-info :db-name)
-;;               :user ,(get-db-info :db-user)
-;;               :pass ,(get-db-info :db-passwd))))
-;;     (crane:connect)))
+(defun connect ()
+  (progn
+    (crane:setup
+     :databases
+     `(:main
+       (:type :mysql
+              :name ,(get-db-info :db-name)
+              :user ,(get-db-info :db-user)
+              :pass ,(get-db-info :db-passwd))))
+    (crane:connect)))
 
   
 (defun mysql-escape-string (str)
