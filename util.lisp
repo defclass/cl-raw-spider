@@ -45,3 +45,6 @@
               :adjustable t
               :initial-contents s
               :element-type (array-element-type s)))
+
+(defun make-adjustable-vector ()
+  (make-array 0 :fill-pointer 0 :adjustable t))
