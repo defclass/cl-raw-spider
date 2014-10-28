@@ -15,6 +15,12 @@
 (defvar *dividing-line* '(("guangdiu" . ()))
   " This var saved the dividing-line object")
 
+(defvar *goods-hashtable* (make-hash-table)
+  "要存入数据库的good都存在一个hash表中")
+
+(defvar *guangdiu-object-array* (make-array 0 :fill-pointer 0 :adjustable t)
+  "guangdiu对象存在一个变长数组中")
+
 
 (log:trace "开始定义类")
 ;;;;定义类
