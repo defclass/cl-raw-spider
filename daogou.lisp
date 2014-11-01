@@ -1,5 +1,5 @@
 (cl:in-package :nixiwan)
-;;;; 主函数
+;;;;主函数
 (defun enter()
   (loop
      do (PROGN
@@ -13,11 +13,12 @@
     (init)
     (log:info "收集guangdiu")
     (collect-gd-obj base-url)
-    (if (and (log:info "收集goods")
-             (collect-goods *collect*))
+    (log:info "收集goods")
+    (if (not (= (length *guangdiu-object-array*) 0))
         (PROGN
+          (collect-goods *guangdiu-object-array*)
           (log:info "保存到mysql")
-          (save-goods  *collect*)
+          (save-goods  *good-object-array*)
           (log:info "保存到wordpress")
           (save-to-wordpress))
         (progn
@@ -29,9 +30,83 @@
       (log:info "初始化dividin")
       (init-dividing))
     ;; init *collect*
-    (setf *collect* (make-instance 'collect))))
+    (setf *guangdiu-object-array* (make-adjustable-vector))
+    (setf *good-object-array* (make-adjustable-vector))))
+
+
+(defun collect-goods (gd-objs)
+  " 将 goods 对象存入 *collect* 中"
+  (if (typep gd-objs 'vector)
+      (let ((gdobj-list (reverse gd-objs)))
+        (when gdobj-list
+          (loop for gdobj being  the elements of  gdobj-list
+             do (let ((good (create-good gdobj)))
+                  (when good
+                    (vector-push-extend good *good-object-array*))))))
+      (progn
+        (log:error "函数参数错误")
+        (error 'collect-goods-arg-error :message "函数参数错误"))))
+
+
+(defmethod create-good ((gdobj guangdiu))
+  " 通过gdobj提供的数据去生成goods的obj"
+  (macrolet ((copy-slot (list target-obj source-obj)
+               `(progn
+                  ,@(loop for i in list
+                       collect `(setf (,i ,target-obj) (,i ,source-obj))))))
+    ;;; category participle click-total 未设定
+    (let* ((goods (make-instance 'goods)))
+      (handler-case 
+          (progn
+            (copy-slot (source min-image headline belong-to)  goods gdobj)
+            (setf (good-id goods) (get-universal-time))
+            (setf (mall-url goods) (get-mall-url (mall-raw-url gdobj)))
+            (setf (create-time goods) (- (get-universal-time) (encode-universal-time 0 0 0 01 01 1970)))
+            (setf (content goods) (get-gd-content (content-url gdobj)))
+            goods)
+        (failed-to-get-content (cond-obj)
+          (log:error "获取内容失败,失败信息:~A 放弃重试~%" (get-content-failed-message cond-obj)))))))
+
+(defun save-goods (goods)
+  " 对 *collect*中的goods对象保存到数据库 "
+  (let ((dividing-obj (elt *guangdiu-object-array* 0)))
+    (progn 
+    (loop for i being the elements of goods
+       do (progn
+            (log:debug "~A" (headline i))
+            (save-good i)))
+    (log:debug "dividing obj: ~A" dividing-obj)
+    (log:debug "bool :~A" (not dividing-obj))
+    (when dividing-obj
+        (save-gg-dividing-obj dividing-obj)))))
+
+(defmethod save-good ((goods goods))
+  (if (not *CONNECT*)
+      (connect)
+      (with-slots ((slot-source source)
+                   (min-image min-image)
+                   (mall-url mall-url)
+                   (slot-headline headline)
+                   (create-time create-time)
+                   (slot-belong-to belong-to)
+                   (slot-content content)) goods
+        (let (sql headline belong-to content source)
+          (progn
+            (setf headline (mysql-escape-string slot-headline))
+            (log:debug "slot-headline:~A" slot-headline)
+            (log:debug "headline:~A" headline)
+            (setf belong-to (mysql-escape-string slot-belong-to))
+            (setf content (mysql-escape-string slot-content))
+            (setf source (mysql-escape-string slot-source))
+            (setf sql (concatenate 'string " insert into `dg-good` (`source`,`min-image`,`mall-url`,`headline`,`create-time`,`belong-to`,`content`) values  ('" source "','" min-image "','" mall-url "','" headline "','" (write-to-string create-time) "','"  belong-to "','" content "');"))
+            (log:debug "~A" sql)
+            (handler-case 
+                (cl-mysql:query sql)
+              (COM.HACKINGHAT.CL-MYSQL-SYSTEM:MYSQL-ERROR ()
+                (log:error "sql执行失败: " sql))))))))
     
 (defun collect-gd-obj (base-url)
+  " 收集 guangdiu obj 的主入口"
   (loop
      with flag = t
      with i = 1
@@ -42,13 +117,13 @@
           (progn
             (setf i (+ i 1))
             (setf gg-objs (gd-index-to-obj index-url))
-            (setf (raw-ggs *collect*) gg-objs)
-            (when (find-dividing-and-coll-gg *collect*)
-              (setf flag nil))
-            (setf *guangdiu-object-array*
-                  (concatenate 'vector *guangdiu-object-array* (raw-ggs *collect*)))
-            (setf (raw-ggs *collect*) nil)))))
-                     
+            (multiple-value-bind (position available-objs)
+                (find-dividing-and-coll-gg gg-objs)
+              (unless  (eql position nil)
+                (setf flag nil))
+              (setf *guangdiu-object-array*
+                    (concatenate 'vector *guangdiu-object-array* available-objs)))))))
+
 (defun gd-index-to-obj (url)
   " 通过逛丢列表页的url，来取得所有对象 返回值是list "
   (let* ((json (parse-guangdiu-index url))
@@ -73,16 +148,22 @@
 ;;;; 辅助函数
 (defun parse-guangdiu-index (url)
   " 解析逛丢的列表页并返回json "
-  (log:info "开始解析 guangdiu index 的内容")
+  (log:info "开始解析 guangdiu 列表页 的内容" url)
   (parse-html url "parse.guangdiu.index.js"))
 
 (defun parse-guangdiu-content (url)
   " 解析逛丢的详情页并返回json "
-  (log:info "开始解析 guangdiu content 的内容")
+  (log:info "开始解析 guangdiu 详情页 的内容" url)
   (parse-html url "parse.guangdiu.content.js"))
 
 (defun save-to-wordpress()
-  (sh (concatenate 'string "/usr/bin/php " (get-path :php-path) "update-to-wordpress.php")))
+  (progn
+    (log:debug "~A" (concatenate 'string "/usr/bin/php "
+                            (namestring (get-path :php-path))
+                            "update-to-wordpress.php"))
+    (sh (concatenate 'string "/usr/bin/php "
+                     (namestring (get-path :php-path))
+                     "update-to-wordpress.php"))))
   
 
 (defun get-mall-url (raw-url)
@@ -151,8 +232,9 @@
                                   (find-class 'guangdiu))))
              (for  slot-name = (closer-mop:slot-definition-name slot))
              (when (jso-value  (symbol-munger:lisp->camel-case slot-name) jso)
-               (collect (symbol-munger:lisp->keyword slot-name))
-               (collect (jso-value  (symbol-munger:lisp->camel-case slot-name) jso)))))))
+               (progn
+                 (collect (symbol-munger:lisp->keyword slot-name))
+                 (collect (jso-value  (symbol-munger:lisp->camel-case slot-name) jso))))))))
 
 
 (defun init-dividing()
@@ -168,7 +250,7 @@
   (progn
     (setf *dividing-line*
           (cl-store::restore (get-path :dividing-line-filepath)))
-    (log:info "读取dividing"
+    (log:info "读取dividing:~A"
               (headline (plist-value "guangdiu" *DIVIDING-LINE*))))
     (plist-value "guangdiu" *DIVIDING-LINE*))
 
@@ -178,6 +260,34 @@
   (log:info "保存dividing" (headline obj))
   (setf-plist "guangdiu" *dividing-line* obj)
   (cl-store::store *dividing-line* (get-path :dividing-line-filepath))))
+
+
+(defun find-dividing-and-coll-gg (aindex-guangdiu-vector)
+  " 如果为T此次函数运行已经找到分隔对象不必再找下去，如果为nil则需要继续查找 "
+  (if (and aindex-guangdiu-vector
+           (typep aindex-guangdiu-vector 'vector))
+      (let ((old-obj (get-gg-dividing-obj))
+            position)
+        (progn
+          (loop for gg-obj being the elements of  aindex-guangdiu-vector
+             do (unless (new-gg-p gg-obj old-obj)
+                  (setf position (position gg-obj aindex-guangdiu-vector))))
+          (values position
+                  (subseq aindex-guangdiu-vector 0 position))))
+      (progn
+        (log:error "参数不是向量或者为空")
+        (error 'find-dividing-arg-error :message "参数不是向量或者为空"))))
+
+(defmethod new-gg-p ((new-obj guangdiu) (old-obj guangdiu))
+  " 如果两个对象有一个属性是相同的，则判断输入的新对象是旧的 "
+  (not (or (equal (headline new-obj)
+                  (headline old-obj))
+           (equal (mall-raw-url new-obj)
+                  (mall-raw-url old-obj))
+           (equal (min-image new-obj)
+                  (min-image old-obj))
+           (equal (content-url new-obj)
+                  (content-url old-obj)))))
 
 ;;;; 工具函数
 (defun get-content (url &key (encode :utf-8))
@@ -212,7 +322,7 @@
 (defun wget-data(url)
   " 获取html文件并将其写入到/tmp/目录中"
   (let* ((html (progn
-                 (log:info "保存链接内容:~A~%" url)
+                 (log:info "保存链接内容:~A" url)
                  (get-content url)))
          (html-path (concatenate 'string (get-path :data-path)
                                  (write-to-string (get-universal-time)))))
@@ -326,16 +436,23 @@
         (log:error "输入数据不是 json 格式:~A" json)
         (error 'json-error :message  "输入数据不是 json 格式"))))
 
+;; (defun connect ()
+;;   (progn
+;;     (crane:setup
+;;      :databases
+;;      `(:main
+;;        (:type :mysql
+;;               :name ,(get-db-info :db-name)
+;;               :user ,(get-db-info :db-user)
+;;               :pass ,(get-db-info :db-passwd))))
+;;     (setf *CONNECT* (crane:connect))))
+
 (defun connect ()
-  (progn
-    (crane:setup
-     :databases
-     `(:main
-       (:type :mysql
-              :name ,(get-db-info :db-name)
-              :user ,(get-db-info :db-user)
-              :pass ,(get-db-info :db-passwd))))
-    (crane:connect)))
+  (setf *connect*
+        (cl-mysql:connect :host (get-db-info :db-host)
+                          :user (get-db-info :db-user)
+                          :password (get-db-info :db-passwd)))
+  (cl-mysql:query (concatenate 'string "use " (get-db-info :db-name))))
 
   
 (defun mysql-escape-string (str)
@@ -347,5 +464,6 @@
         (setf str (cl-ppcre:regex-replace-all "'" str "\\\\'"))
         (log:trace "转义'后的" str)
         (setf str (cl-ppcre:regex-replace-all "\"" str "\\\\\""))
-        (log:trace "转义\\后的" str))))
+        (log:trace "转义\\后的" str)
+        str)))
        

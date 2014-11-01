@@ -8,6 +8,7 @@
                  :cl-json
                  :crane
                  :alexandria
+                 :cl-mysql
                  :st-json
                  :local-time
                  :closer-mop
