@@ -315,6 +315,10 @@
       (CHUNGA:INPUT-CHUNKING-UNEXPECTED-END-OF-FILE ()
         (PROGN
           (log:warn  "错误：INPUT-CHUNKING-UNEXPECTED-END-OF-FILE,尝试重新获取")
+          (get-content url)))
+      (error (e)
+        (progn
+          (log::error "获取错误，详情:" e)
           (get-content url))))))
 
 
