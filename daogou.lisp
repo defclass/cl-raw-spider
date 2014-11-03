@@ -296,7 +296,9 @@
          binary)
     (handler-case
         (progn
+          (log:debug "开始执行drakma")
           (setf binary (drakma::http-request url :force-binary t :user-agent user-agent))
+          (log:debug "执行drakma完,开始转换binary")
           (sb-ext::octets-to-string binary :EXTERNAL-FORMAT encode))
       (USOCKET:NS-HOST-NOT-FOUND-ERROR ()
         (PROGN
