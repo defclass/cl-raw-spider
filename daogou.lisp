@@ -119,7 +119,8 @@
             (setf gg-objs (gd-index-to-obj index-url))
             (multiple-value-bind (position available-objs)
                 (find-dividing-and-coll-gg gg-objs)
-              (unless  (eql position nil)
+              (when (or  (not (eql position nil))
+                         (= i 5))
                 (setf flag nil))
               (setf *guangdiu-object-array*
                     (concatenate 'vector *guangdiu-object-array* available-objs)))))))
